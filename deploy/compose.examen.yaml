@@ -1,0 +1,52 @@
+# Variant srv-examen: nginx propi (TLS autosignat, 127.0.0.1:9443) davant de dufs.
+services:
+  dufs:
+    image: sigoden/dufs:v0.47.0
+    container_name: dufs
+    expose: ["5000"]
+    restart: unless-stopped
+    volumes:
+      - ./dufs/data:/data
+      - ./dufs/assets:/assets
+      - ./dufshelper:/config:ro          # dufs.yaml el genera DufsHelper
+    command:
+      [
+        "/data",
+        "--port", "5000",
+        "--assets", "/assets",
+        "--allow-all",
+        "--config", "/config/dufs.yaml"  # usuaris i permisos (clau auth)
+      ]
+    networks: [dufs_net]
+
+  dufshelper:
+    image: ghcr.io/joseptomascomellas/dufshelper:latest
+    container_name: dufshelper
+    expose: ["8080"]
+    restart: unless-stopped
+    environment:
+      DUFS_CONTAINER: dufs
+      HELPER_ADMINS: admin
+    volumes:
+      - ./dufshelper:/state
+      - ./dufs/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [dufs_net]
+
+  nginx:
+    image: nginx:latest
+    container_name: dufs_nginx
+    ports:
+      - "127.0.0.1:9443:9443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/www:/var/www
+    restart: unless-stopped
+    depends_on: [dufs, dufshelper]
+    networks: [dufs_net]
+
+networks:
+  dufs_net:
+    driver: bridge

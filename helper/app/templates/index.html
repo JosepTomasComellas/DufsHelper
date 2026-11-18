@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestió d'accessos</title>
+<style>
+  :root { --bg:#f3f4f6; --card:#fff; --fg:#111827; --mut:#6b7280; --line:#e5e7eb; --brand:#0f172a; --ok:#166534; --okbg:#dcfce7; --err:#991b1b; --errbg:#fee2e2; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0b1220; --card:#111a2e; --fg:#e5e7eb; --mut:#9ca3af; --line:#243049; --brand:#e5e7eb; --ok:#bbf7d0; --okbg:#14532d; --err:#fecaca; --errbg:#7f1d1d; } }
+  * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui,sans-serif }
+  main { max-width:860px; margin:0 auto; padding:16px }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap }
+  h1 { font-size:20px; margin:8px 0 } h2 { font-size:16px; margin:0 0 10px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:14px 0 }
+  .msg { padding:10px 14px; border-radius:8px; margin:12px 0 } .ok { background:var(--okbg); color:var(--ok) } .err { background:var(--errbg); color:var(--err) }
+  input, textarea, button { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg) }
+  textarea { width:100%; font-family:ui-monospace,monospace; min-height:64px } input[type=text], input[type=password] { width:100%; margin:3px 0 8px }
+  button { cursor:pointer; background:var(--brand); color:var(--bg); border-color:var(--brand) } button.sec { background:transparent; color:var(--fg); border-color:var(--line) } button.del { background:transparent; color:var(--err); border-color:var(--err) }
+  label { font-size:13px; color:var(--mut); display:block } .mut { color:var(--mut); font-size:13px }
+  .row { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:12px 0; border-top:1px solid var(--line) } .row:first-of-type { border-top:0 }
+  .acts { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px } .acts input { width:150px; margin:0 }
+  code { background:var(--line); padding:1px 6px; border-radius:4px } .badge { font-size:11px; background:var(--line); border-radius:99px; padding:1px 8px }
+  @media (max-width:640px) { .row { grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Gestió d'accessos</h1>
+    <span class="mut">Sessió: <b>{{ who }}</b>{% if is_admin %} <span class="badge">admin</span>{% endif %} · <a href="/">Tornar al portal</a></span>
+  </header>
+
+  {% if msg %}<div class="msg ok">{{ msg }}</div>{% endif %}
+  {% if error %}<div class="msg err">{{ error }}</div>{% endif %}
+  {% if restart_error %}<div class="msg err">L'últim reinici de dufs ha fallat: {{ restart_error }}</div>{% endif %}
+  {% if newpass %}<div class="msg ok">Contrasenya de <b>{{ newpass[0] }}</b>: <code>{{ newpass[1] }}</code><br><span class="mut">Només es mostra ara; copia-la abans de sortir.</span></div>{% endif %}
+
+  <section class="card">
+    <h2>Canviar la meva contrasenya</h2>
+    <form method="post" action="{{ base }}/password">
+      <label>Contrasenya actual</label><input type="password" name="current" required autocomplete="current-password">
+      <label>Contrasenya nova (mín. {{ min_pw }} caràcters)</label><input type="password" name="new" required minlength="{{ min_pw }}" autocomplete="new-password">
+      <label>Repeteix la contrasenya nova</label><input type="password" name="confirm" required minlength="{{ min_pw }}" autocomplete="new-password">
+      <button>Canviar contrasenya</button>
+    </form>
+    {% if my_rules %}<p class="mut">El teu accés: {% for p, m in my_rules.items() %}<code>{{ p }}:{{ m }}</code> {% endfor %}</p>{% endif %}
+  </section>
+
+{% if is_admin %}
+  <section class="card">
+    <h2>Usuaris</h2>
+    {% for name, rules, adm in users %}
+    <div class="row">
+      <div><b>{{ name }}</b>{% if adm %} <span class="badge">admin</span>{% endif %}</div>
+      <div>
+        <form method="post" action="{{ base }}/users/{{ name }}/rules">
+          <textarea name="rules" aria-label="Regles de {{ name }}">{{ rules }}</textarea>
+          <div class="acts"><button class="sec">Desar regles</button></div>
+        </form>
+        <form method="post" action="{{ base }}/users/{{ name }}/password" class="acts">
+          <input type="text" name="password" placeholder="nova contrasenya" autocomplete="off" aria-label="Nova contrasenya de {{ name }}">
+          <button class="sec">Canviar (buit = generar)</button>
+        </form>
+        {% if not adm %}
+        <form method="post" action="{{ base }}/users/{{ name }}/delete" class="acts"><button class="del">Esborrar usuari</button></form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Afegir usuari</h2>
+    <form method="post" action="{{ base }}/users">
+      <label>Nom d'usuari</label><input type="text" name="name" required maxlength="32" pattern="[A-Za-z0-9._-]+" autocomplete="off">
+      <label>Contrasenya (buit = generar-ne una)</label><input type="text" name="password" autocomplete="off">
+      <label>Regles — una per línia, <code>/Carpeta:rw</code> o <code>/Carpeta:ro</code>. Les carpetes inexistents es creen.</label>
+      <textarea name="rules" required placeholder="/Public:rw&#10;/Nova:rw"></textarea>
+      <button>Crear usuari</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Accés anònim (sense usuari)</h2>
+    <form method="post" action="{{ base }}/anonymous">
+      <textarea name="rules" aria-label="Regles anònimes">{{ anon }}</textarea>
+      <div class="acts"><button class="sec">Desar</button></div>
+    </form>
+  </section>
+  <p class="mut">Cada canvi reinicia dufs (uns segons); els canvis propers s'agrupen en un sol reinici. Esborrar un usuari mai esborra fitxers.</p>
+{% endif %}
+</main>
+</body>
+</html>

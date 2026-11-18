@@ -1,0 +1,15 @@
+# Només per a la variant srv-examen (nginx). Enganxa aquest bloc dins `server { ... }`
+# de nginx/conf.d/default.conf, ABANS de `location / { ... }`.
+#
+# Important: Host amb $http_host (conserva el port 9443). DufsHelper el compara amb
+# l'Origin de cada POST com a protecció CSRF; amb $host fallaria.
+location /helper/ {
+    proxy_pass http://dufshelper:8080;          # sense URI final: conserva el prefix /helper
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Enllaç opcional a la capçalera del portal: afegeix dins el div de `.top` del
+# sub_filter '<body>' existent, per exemple:
+#   <a href="/helper/" style="margin-left:auto;color:#fff">Gestió d'accessos</a>
