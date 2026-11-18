@@ -1,0 +1,59 @@
+# Variant srv-tute: Traefik + CrowdSec davant de dufs (sense nginx).
+# Substitueix portalfitxers.sdslab.cat pel teu domini.
+services:
+  dufs:
+    image: sigoden/dufs:v0.47.0
+    container_name: dufs
+    restart: unless-stopped
+    volumes:
+      - ./dufs/data:/data
+      - ./dufs/assets:/assets
+      - ./dufshelper:/config:ro          # dufs.yaml el genera DufsHelper
+    command:
+      [
+        "/data",
+        "--port", "5000",
+        "--assets", "/assets",
+        "--allow-all",
+        "--config", "/config/dufs.yaml"  # usuaris i permisos (clau auth)
+      ]
+    networks: [traefik]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.dufs.rule=Host(`portalfitxers.sdslab.cat`)"
+      - "traefik.http.routers.dufs.middlewares=crowdsec@docker"
+      - "traefik.http.routers.dufs.entrypoints=websecure"
+      - "traefik.http.routers.dufs.tls=true"
+      - "traefik.http.routers.dufs.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dufs.service=dufs"
+      - "traefik.http.services.dufs.loadbalancer.server.port=5000"
+
+  dufshelper:
+    image: ghcr.io/joseptomascomellas/dufshelper:latest
+    container_name: dufshelper
+    restart: unless-stopped
+    environment:
+      DUFS_CONTAINER: dufs
+      HELPER_ADMINS: admin               # usuaris amb permís d'administració (separats per coma)
+    volumes:
+      - ./dufshelper:/state              # users.json + dufs.yaml
+      - ./dufs/data:/data                # per crear carpetes noves
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [traefik]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # Regla més llarga que la de dufs => Traefik la prioritza per a /helper
+      - "traefik.http.routers.dufshelper.rule=Host(`portalfitxers.sdslab.cat`) && PathPrefix(`/helper`)"
+      - "traefik.http.routers.dufshelper.middlewares=crowdsec@docker"
+      - "traefik.http.routers.dufshelper.entrypoints=websecure"
+      - "traefik.http.routers.dufshelper.tls=true"
+      - "traefik.http.routers.dufshelper.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dufshelper.service=dufshelper"
+      - "traefik.http.services.dufshelper.loadbalancer.server.port=8080"
+
+networks:
+  traefik:
+    external: true
+    name: traefik
