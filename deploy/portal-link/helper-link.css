@@ -1,0 +1,22 @@
+/* Enllaç "Gestió d'accessos" (DufsHelper) */
+.top .helper-link,
+.top .helper-link:link,
+.top .helper-link:visited {
+  color: #fff !important;
+  background: #DC001C;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 18px;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.top .helper-link:hover,
+.top .helper-link:focus-visible {
+  background: #b80017;
+  transform: translateY(-1px);
+  outline: none;
+}

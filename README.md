@@ -38,6 +38,16 @@ docker run --rm -v "$PWD:/project:ro" -v "$PWD/dufshelper:/state" \
 
 Mostra els usuaris i regles importats: **comprova'ls**. Després substitueix el `compose.yaml` per la plantilla (conservant el teu domini/xarxes), `docker compose up -d` i, quan tot funcioni, elimina el `.env` (conté contrasenyes en clar).
 
+## Enllaç «Gestió d'accessos» al portal
+
+Només es mostra si hi ha un usuari loginat a dufs. A la barra superior (`.top`) afegeix:
+
+```html
+<a class="helper-link" href="/helper/" style="display:none">Gestió d'accessos</a>
+```
+
+i incorpora [`deploy/portal-link/helper-link.css`](deploy/portal-link/helper-link.css) (estil) i [`deploy/portal-link/link-login.js`](deploy/portal-link/link-login.js) (el mostra quan `DATA.user` existeix) als teus `custom.css` / `custom.js` (tute) o a `css.css` / `js.js` d'nginx (examen). Si canvies el CSS/JS, afegeix `?v=N` a la URL perquè el navegador no usi la caché. El `/helper/` ja exigeix login per si mateix; això només n'amaga l'enllaç.
+
 ## Variables del contenidor `dufshelper`
 
 | Variable | Per defecte | |
